@@ -21,10 +21,11 @@ async function callServer(url, data) {
   }
 
 
-function handleServerResponse(res, component) {
+function handleServerResponse(res, dropin) {
     if (res.action) {
-      //receive action payload, Drop-in handles 
-      component.handleAction(res.action);
+      //receive action payload, Drop-in handles (send to iDEAL URL)
+      //lookin to the value of dropin
+      dropin.handleAction(res.action);
     } else {
       switch (res.resultCode) {
         case "Authorised":
@@ -44,7 +45,7 @@ function handleServerResponse(res, component) {
     }
   }
 
-  async function submissionHandler(state,component,url){
+  async function submissionHandler(state,dropin,url){
     console.log("submissionHandler")
     try {
       const res = await callServer (url, state.data);
@@ -77,15 +78,15 @@ const configuration = {
           }
         }*/,
   //Event Handler when user submits Payment
-  onSubmit: (state, component) => {
+  onSubmit: (state, dropin) => {
     if (state.isValid) {
-      console.log("submitting state: " + state)
-      submissionHandler(state, component, "/api/initiatePayment");
+      console.log("submitting state: " + JSON.stringify(state))
+      submissionHandler(state, dropin, "/api/initiatePayment");
     }
   },
   //Event Handler when payment requires additional details
-  onAdditionalDetails: (state, component) => {
-    submissionHandler(state, component, "/api/submitAdditionalDetails");
+  onAdditionalDetails: (state, dropin) => {
+    submissionHandler(state, dropin, "/api/submitAdditionalDetails");
   },
 };
 
