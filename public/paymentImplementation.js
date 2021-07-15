@@ -1,4 +1,4 @@
-console.log("script run")
+console.log("script runs")
 
 const paymentMethodsResponse = JSON.parse(document.getElementById("paymentMethodsResponse").innerHTML);
 const clientKey= document.getElementById("clientKey").innerHTML;
@@ -8,9 +8,8 @@ console.log(clientKey);
 
 //SERVER FUNCTIONS//
 
-//used to callServer endpoints
+//used to call Server endpoints
 async function callServer(url, data) {
-
     const res = await fetch(url, {
         method: "POST",
         body: data ? JSON.stringify(data) : "",
@@ -22,53 +21,50 @@ async function callServer(url, data) {
   }
 
 
-
-  function handleServerResponse(res, component) {
+function handleServerResponse(res, component) {
     if (res.action) {
+      //receive action payload, Drop-in handles 
       component.handleAction(res.action);
     } else {
       switch (res.resultCode) {
         case "Authorised":
-          window.location.href = "/result/success";
+          window.location.href = "/success";
           break;
         case "Pending":
         case "Received":
-          window.location.href = "/result/pending";
+          window.location.href = "/pending";
           break;
         case "Refused":
-          window.location.href = "/result/failed";
+          window.location.href = "/failed";
           break;
         default:
-          window.location.href = "/result/error";
+          window.location.href = "/error";
           break;
       }
     }
   }
-   
 
-async function handleSubmission(state, component, url) {
+  async function submissionHandler(state,component,url){
+    console.log("submissionHandler")
     try {
-      const res = await callServer(url, state.data);
-      handleServerResponse(res, component);
-    } catch (error) {
+      const res = await callServer (url, state.data);
+      handleServerResponse (res, dropin);
+    }
+    catch (error) {
       console.error(error);
     }
-  }
-  
-  
+      
+    }
   
 
 
-
-  async function initCheckout() {
-    try {
-      //const paymentMethodsResponse = await callServer("/api/getPaymentMethods");
-      const configuration = {
-        paymentMethodsResponse: paymentMethodsResponse,
-        clientKey: clientKey,
-        locale: "en_US",
-        environment: "test",
-        paymentMethodsConfiguration: {
+//Create config object to instantiate Drop-in component
+const configuration = {
+  paymentMethodsResponse: paymentMethodsResponse,
+  clientKey: clientKey,
+  locale: "en_US",
+  environment: "test"
+        /*paymentMethodsConfiguration: {
           card: {
             showPayButton: true,
             hasHolderName: true,
@@ -79,50 +75,23 @@ async function handleSubmission(state, component, url) {
               currency: "EUR"
             }
           }
-        },
-        onSubmit: (state, component) => {
-          if (state.isValid) {
-            handleSubmission(state, component, "/api/initiatePayment");
-          }
-        },
-        onAdditionalDetails: (state, component) => {
-          handleSubmission(state, component, "/api/submitAdditionalDetails");
-        },
-      };
-      console.log('checkouts initiated')
-      const checkout = new AdyenCheckout(configuration);
-      
-        checkout.create("dropin").mount("#dropin");
-      
-    } catch (error) {
-      console.error(error);
+        }*/,
+  //Event Handler when user submits Payment
+  onSubmit: (state, component) => {
+    if (state.isValid) {
+      console.log("submitting state: " + state)
+      submissionHandler(state, component, "/api/initiatePayment");
     }
-  }
-  
-  
+  },
+  //Event Handler when payment requires additional details
+  onAdditionalDetails: (state, component) => {
+    submissionHandler(state, component, "/api/submitAdditionalDetails");
+  },
+};
 
+const checkout = new AdyenCheckout(configuration);
 
+const dropinIntegration = checkout.create("dropin").mount("#dropin");
 
-initCheckout();
+//initCheckout();
 
-
-/*define configuration object
-const configuration = {
-    paymentMethodsResponse,
-    clientKey,
-    locale: "en_US",
-    environment: "test",
-    paymentMethodsConfiguration: {
-        card: {
-            hasHolderName:true
-        }
-    },
-    onSubmit: (state,dropin)=> {
-        handleSubmission(state,dropin, "/api/initiatePayment");
-    },
-    onAdditionalDetails: (state,dropin)=> {
-        handleSubmission (state,dropin, "/api/submitAdditionalDetails");
-    }
-}*/
-
-//pass config object and create new checkoutInstance
