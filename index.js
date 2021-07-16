@@ -6,17 +6,13 @@ const path = require('path')
 const axios = require('axios')
 const { v4: uuidv4 } = require('uuid');
 const { mainModule } = require('process')
+const { json } = require('express')
 
 dotenv.config();
 
-//init app
 const app = express();
-
-//Set Templating Engine
 app.set('view engine','ejs')
 app.set ('view options', {layout: 'main.ejs'})
-
-//JSON Parser
 app.use(express.json());
 
 //Template directory
@@ -28,57 +24,98 @@ const config = {
    merchantAccount:process.env.merchantAccount
 }
 
+const demoPaymentMethodConfig = {
+   merchantAccount: config.merchantAccount,
+   countryCode: "NL",
+   amount: {
+     currency: "EUR",
+     value: 1000
+   },
+   channel: "Web",
+   shopperLocale: "en-US"
+}
+
 //temporary data store if additional details are needed
 const tempPaymentData = {};
 
-//Server Endpoints
-app.post("/api/initiatePayment", async(req,res) => {
+
+
+//----------------//SERVER Endpoints//----------------//
+
+
+app.post("/api/initiatePayment", async (req, res) => {
    try {
       const orderRef = uuidv4();
       console.log("orderRef " + orderRef)
-      console.log("payment method: " + JSON.stringify(req.body.paymentMethod))
-      const axiosConfigInitiatePayment = {
-        method: 'post',
-        url: 'https://checkout-test.adyen.com/v67/payments',
-        headers: {
+      const axiosInitiatePayment = {
+         method: 'post',
+         url: 'https://checkout-test.adyen.com/v67/payments',
+         headers: {
             'x-API-key': config.apiKey,
             'content-type': 'application-json'
-        },
-        data: {
-           merchantAccount: config.merchantAccount,
-           paymentMethod: req.body.paymentMethod,
-           amount: {
-              currency:"EUR",
-              value:1
-           } ,
-           reference: orderRef,
-           returnUrl: `http://localhost:8080/api/handleShopperRedirect?orderRef=${orderRef}`,
-        }
-     } 
-     const paymentResult = await axios(axiosConfigInitiatePayment);
+         },
+         data: {
+            merchantAccount: config.merchantAccount,
+            paymentMethod: req.body.paymentMethod,
+            browserInfo: req.body.browserInfo,
+            amount: {
+               currency: demoPaymentMethodConfig.amount.currency,
+               value: demoPaymentMethodConfig.amount.value
+            },
+            reference: orderRef,
+            returnUrl: `http://localhost:${process.env.PORT}/api/handleShopperRedirect?orderRef=${orderRef}`,
+            additionalData: {
+               allow3DS2: true
+            },
+            channel: 'web',
+            origin: `http://localhost:${process.env.PORT}`,
+            billingAddress: req.body.billingAddress,
+            shopperEmail: req.body.shopperEmail,
+            shopperIP: req.body.shopperIP
+         }
+      }
+      console.log("initiating payment: " + JSON.stringify(axiosInitiatePayment.data))
+      
+      const paymentResult = await axios(axiosInitiatePayment);
 
-     console.log("response: " + JSON.stringify(paymentResult.data))
+      console.log("initial payment response: " + JSON.stringify(paymentResult.data))
 
-     const {resultCode}=paymentResult.data;
-     const {action} = paymentResult.data;
-     const {pspReference} = paymentResult.data
+      const { resultCode } = paymentResult.data;
+      const { action } = paymentResult.data;
+      const { pspReference } = paymentResult.data
 
-     console.log("result code: " + resultCode);
-
-     if (action) {
-        console.log("there's an action");
-        tempPaymentData[orderRef]=action.paymentData
-        console.log("tempPaymentData: " + JSON.stringify(tempPaymentData))
-     }
-     //if action code is non-null, send result code and action back to client
-     res.json({resultCode, action});      
-  }
-     catch (err){
-        const eCode = err.errorCode || 500;
-        console.error(`Error: ${err.message}, error code: ${eCode}`);
-        res.status(err.statusCode).json(err.message);
+      console.log("result code: " + resultCode);
+      
+      if (action) {
+         console.log("there's an action - storing tempPaymentData");
+         tempPaymentData[orderRef] = action.paymentData
+         //console.log("tempPaymentData: " + JSON.stringify(tempPaymentData))
+      }
+      //if action code is non-null, send result code and action back to client
+      //res.json({ action , resultCode });
+      res.json(paymentResult.data);
    }
-});
+   catch (error){
+      console.log(`Initiate payment Error Response:: ` + JSON.stringify(error.response.data))
+      res.status(error.response.data.status).json(error.message);
+   }
+
+  });
+
+  
+     
+  
+
+      
+      /*
+      
+      err) {
+      console.log(err)
+      const eCode = err.data.status || 500;
+      console.error(`Error: ${err.message}, error code: ${eCode}`);
+      res.status(eCode).json(err.message);
+   }*/
+
 
 //receive payload from iDeal redirect
 //get order ref number (will depend on if GET or POST)
@@ -113,6 +150,7 @@ app.all("/api/handleShopperRedirect", async(req,res) => {
    
    
    try {
+      console.log("submitting payment details" + JSON.stringify(detailsPayload));
       const axiosConfigPaymentDetails = {
          method: 'post',
          url: 'https://checkout-test.adyen.com/v67/payments/details',
@@ -126,7 +164,7 @@ app.all("/api/handleShopperRedirect", async(req,res) => {
          }
 
       const paymentDetailsResult = await axios(axiosConfigPaymentDetails);
-
+      
       const detailsResultCode=paymentDetailsResult.data.resultCode;
       const detailsPSPRef=paymentDetailsResult.data.pspReference;
       console.log("detailsResultCode: " + detailsResultCode)
@@ -149,17 +187,68 @@ app.all("/api/handleShopperRedirect", async(req,res) => {
           break;
       }
     } 
-     catch (err){
-        const eCode = err.errorCode || 500;
-        console.error(`Error: ${err.message}, error code: ${eCode}`);
-        res.status(err.statusCode).json(err.message);
+     catch (error){
+      console.log(`Handle Redirect server Error Response:: ` + JSON.stringify(error.response.data))
+      res.status(error.response.data.status).json(error.message);
    }
 });
 
+app.post('/api/submitAdditionalDetails', async (req, res) => {
+   console.log("submitting Additional payment details: " + JSON.stringify(req.body.details));
+//figure out why this call is failing with 400
+   /*
+   const requestBodyDetails = req.body.details;
+   let requestBodyDetails2 = {}
+      console.log("requestBodyDetails: " + JSON.stringify(requestBodyDetails));
+
+   if (requestBodyDetails["threeds2.fingerprint"]){
+      requestBodyDetails2 = {
+         threeDSResult: requestBodyDetails["threeds2.fingerprint"]
+      }
+   }
+   else {
+      requestBodyDetails2  = req.body.details;
+   }*/
+
+   //console.log ("requestBodyDetails2: " + JSON.stringify(requestBodyDetails2));
+   try {
+      
+      const axiosConfigAdditionalDetails = {
+         method: 'post',
+         url: 'https://checkout-test.adyen.com/v67/payments/details',
+         headers: {
+            'x-API-key': config.apiKey,
+            'content-type': 'application-json'
+         },
+         data: {
+            details: req.body.details,
+            paymentData: req.body.paymentData
+         }
+      }
+
+      const additionalDetailsResult = await axios(axiosConfigAdditionalDetails);
+
+      const additionalDetailsResultCode = additionalDetailsResult.data.resultCode;
+      const additionalDetailsPSPRef = additionalDetailsResult.data.pspReference;
+
+      console.log("additionalDetails full result: " + JSON.stringify(additionalDetailsResult.data))
+      console.log("additionalDetailsResultCode: " + additionalDetailsResultCode);
+      console.log("additionalDetailsPSPRef: " + additionalDetailsPSPRef);
+
+      res.json(additionalDetailsResult.data);
+
+   } catch (error) {
+            cconsole.log(`Additional Details server call Error Response:: ` + JSON.stringify(error.response.data))
+      res.status(error.response.data.status).json(error.message);
+   }
+
+});
+
 //Client Endpoints
- app.get('/', async (req,res)=>{
-    try {
-      //Axios config object to make paymentMethods call 
+ app.get('/checkout', async (req,res)=>{
+   console.log("checkout page loaded"); 
+   try {
+      //call /paymentMethods on page load
       const axiosconfig = {
          method: 'post',
          url: 'https://checkout-test.adyen.com/v67/paymentMethods',
@@ -168,13 +257,19 @@ app.all("/api/handleShopperRedirect", async(req,res) => {
              'content-type': 'application-json'
          },
          data: {
-             merchantAccount: 'AdyenRecruitmentCOM',
-             channel: "Web"
+             "merchantAccount": demoPaymentMethodConfig.merchantAccount,
+             countryCode: demoPaymentMethodConfig.countryCode,
+             amount: {
+               "currency": demoPaymentMethodConfig.currency,
+               "value": demoPaymentMethodConfig.value
+             },
+             channel: demoPaymentMethodConfig.channel,
+             shopperLocale: demoPaymentMethodConfig.shopperLocale
          }
       } 
       
       let response = await axios(axiosconfig)
-               
+      console.log(JSON.stringify(response.data))
        res.render("payment", {
           clientKey: process.env.CLIENT_KEY,
           response: JSON.stringify(response.data)
@@ -201,7 +296,10 @@ app.get('/failed', async (req,res)=>{
 app.get('/error', async (req,res)=>{
    res.render("error");
 })
- 
+
+app.get('/', function(req, res){
+   res.redirect('/checkout');
+});
 
  //Start Server
 const PORT = process.env.PORT || 3000
