@@ -1,0 +1,20 @@
+<main>
+    <div class="placeholder">
+      <h1>We have encountered an error. Please try again later.</h1>
+      <p id="status"></p>
+      <p id="pspReference"></p>
+      <p id="message"></p>
+    </div> 
+  </main>
+
+  
+  <script>
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const statusCode = urlParams.get('status');
+    const message = urlParams.get('message');
+    const pspReference = urlParams.get('pspReference');
+    document.getElementById('status').textContent = `Result code: ${statusCode}`;
+    document.getElementById('message').textContent = `Refusal reason: ${message}`;
+    document.getElementById('pspReference').textContent = `PSPReference: ${pspReference}`;
+  </script>

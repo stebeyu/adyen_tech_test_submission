@@ -1,9 +1,6 @@
-//Grabbing paymentMethods and clientKey, passed when page is rendered
+//Storing paymentMethods and clientKey, passed when page is rendered
 const paymentMethodsResponse = JSON.parse(document.getElementById("paymentMethodsResponse").innerHTML);
-const clientKey= document.getElementById("clientKey").innerHTML;
-
-console.log(paymentMethodsResponse);
-console.log(clientKey);
+const clientKey = document.getElementById("clientKey").innerHTML;
 
 //Demo shopper info
 const demoPayerConfig = {
@@ -22,82 +19,94 @@ const demoPayerConfig = {
 
 //----------------//SERVER FUNCTIONS//----------------//
 
-//used to call Server endpoints
-async function callServer(url, data) {
-  console.log("call server")  
-  const res = await fetch(url, {
-        method: "POST",
-        body: data ? JSON.stringify(data) : "",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    console.log("call server res: " + JSON.stringify(res.body))
-    return await res.json();
-  }
 
+
+//Utility function to call backend server endpoints
+
+async function callServer(url, data) {
+  console.log("call server")
+  const res = await fetch(url, {
+    method: "POST",
+    body: data ? JSON.stringify(data) : "",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  console.log("Calling server: " + url)
+  return await res.json();
+}
+
+//Utility function to handle server responses and send back to Drop-in if needed
 
 function handleServerResponse(res, dropin) {
-    if (res.action) {
-      //receive action payload, Drop-in handles (send to iDEAL URL)
-      //To do: lookin to the value of dropin
-      //to do: render display with resultCode if payment successful
-      action = res.action;
+  if (res.action) {
+    //To do: lookin to the value of dropin
+    //to do: render display with resultCode if payment successful
+    console.log("API returned action type: " + JSON.stringify(res.action.type))
+    action = res.action;
 
-      console.log("here's an action: " + JSON.stringify(res.action) + "of type " + JSON.stringify(res.action.type))
+    //Transform 3DS2 action.type before passing into Drop-in
 
-      if (action.type==='threeDS2' && action.subtype==='fingerprint') {
-        action.type='threeDS2Fingerprint'
+    switch (true) {
+      case (action.type === 'threeDS2' && action.subtype === 'fingerprint'): {
+        action.type = 'threeDS2Fingerprint'
+        break;
       }
-      else if (action.type==='threeDS2' && action.subtype==='challenge') {
-        action.type='threeDS2Challenge'
+
+      case (action.type === 'threeDS2' && action.subtype === 'challenge'): {
+        action.type = 'threeDS2Challenge'
+        break;
       }
-      console.log ("altered action: " + JSON.stringify(action))
-      
-      dropin.handleAction(action);
+
+      default: //No action.type transformation needed if not 3DS
+        break
+
     }
-      else {
-        (console.log("redirecting to page"))
-      switch (res.resultCode) {
-        case "Authorised":
-          window.location.href = "/success";
-          break;
-        case "Pending":
-        case "Received":
-          window.location.href = "/pending";
-          break;
-        case "Refused":
-          window.location.href = "/failed";
-          break;
-        default:
-          window.location.href = "/error";
-          break;
-      }
+
+    console.log("Altered action.type: " + JSON.stringify(action.type))
+
+    dropin.handleAction(action);
+  }
+  else {
+
+    switch (res.resultCode) {
+      case "Authorised":
+        window.location.href = `/success?pspreference=${res.pspReference}&merchantreference=${res.merchantReference}`;
+        break;
+      case "Pending":
+      case "Received":
+        window.location.href = "/pending";
+        break;
+      case "Refused":
+        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`; 
+        break;
+      default:
+        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`;
+        break;
     }
   }
+}
+
+//Utility function to handle request/response from server endpoints
 
 async function submissionHandler(state, dropin, url) {
-  console.log("submissionHandler")
+
   try {
     const res = await callServer(url, state.data);
-    console.log("sending to handle serverResponse")
     handleServerResponse(res, dropin);
   }
+  
   catch (error) {
     console.error(error);
   }
 
 }
-  
+
+//----------------//INITIALIZE DROP-IN//----------------//
 
 
-//Create config object to instantiate Drop-in component
-
-//TO DO: wrap in async function
 async function initializeCheckout() {
-
   try {
-
     const configuration = {
       paymentMethodsResponse: paymentMethodsResponse,
       clientKey: clientKey,
@@ -108,7 +117,6 @@ async function initializeCheckout() {
           positionHolderNameOnTop: true,
           hasHolderName: true,
           holderNameRequired: true,
-          //name: "test name",
           billingAddressRequired: true,
           data: {
             holderName: demoPayerConfig.holderName,
@@ -125,28 +133,42 @@ async function initializeCheckout() {
           }
         }
       },
-      //Event Handler when user submits Payment
+
+      //Drop-in Event Handler when user submits Payment
+
+      //todo: check if onSubmit should be different for cards vs. others 
       onSubmit: (state, dropin) => {
         if (state.isValid) {
           console.log("submitting state: " + JSON.stringify(state))
+
           submissionHandler(state, dropin, "/api/initiatePayment");
         }
       },
-      //Event Handler when payment requires additional details
+
+      //Drop-in Event Handler when payment requires additional details
       onAdditionalDetails: (state, dropin) => {
         console.log("additionalDetails state: " + JSON.stringify(state.data))
         submissionHandler(state, dropin, "/api/submitAdditionalDetails");
       },
+
+      onReady: () => {
+        console.log("Drop-in component initialized successfully")
+      }
+
     }
+
     const checkout = new AdyenCheckout(configuration);
 
     const dropinIntegration = checkout.create("dropin").mount("#dropin");
-  } catch (error) {
+
+  }
+
+  catch (error) {
     console.error(error)
   }
+
 }
 
 initializeCheckout();
 
 // TO DO: add handling if paymentMethods call fails (display sorry error message)
-
