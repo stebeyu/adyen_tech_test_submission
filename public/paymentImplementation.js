@@ -17,8 +17,8 @@ const demoPayerConfig = {
   }
 }
 
-//----------------//SERVER FUNCTIONS//----------------//
 
+//----------------//SERVER FUNCTIONS//----------------//
 
 
 //Utility function to call backend server endpoints
@@ -39,14 +39,12 @@ async function callServer(url, data) {
 //Utility function to handle server responses and send back to Drop-in if needed
 
 function handleServerResponse(res, dropin) {
+
   if (res.action) {
     //To do: lookin to the value of dropin
-    //to do: render display with resultCode if payment successful
-    console.log("API returned action type: " + JSON.stringify(res.action.type))
     action = res.action;
 
     //Transform 3DS2 action.type before passing into Drop-in
-
     switch (true) {
       case (action.type === 'threeDS2' && action.subtype === 'fingerprint'): {
         action.type = 'threeDS2Fingerprint'
@@ -58,17 +56,18 @@ function handleServerResponse(res, dropin) {
         break;
       }
 
-      default: //No action.type transformation needed if not 3DS
+      default: //No action.type transformation needed if not 3DS2 action
         break
-
     }
 
-    console.log("Altered action.type: " + JSON.stringify(action.type))
-
+    //Pass action to Drop-in component for handling (redirect or 3DS)
     dropin.handleAction(action);
-  }
-  else {
 
+  }
+
+  else {
+    
+    //Send user to results page based on resultCode received
     switch (res.resultCode) {
       case "Authorised":
         window.location.href = `/success?pspreference=${res.pspReference}&merchantreference=${res.merchantReference}`;
@@ -88,7 +87,6 @@ function handleServerResponse(res, dropin) {
 }
 
 //Utility function to handle request/response from server endpoints
-
 async function submissionHandler(state, dropin, url) {
 
   try {
@@ -99,11 +97,9 @@ async function submissionHandler(state, dropin, url) {
   catch (error) {
     console.error(error);
   }
-
 }
 
 //----------------//INITIALIZE DROP-IN//----------------//
-
 
 async function initializeCheckout() {
   try {
@@ -135,26 +131,20 @@ async function initializeCheckout() {
       },
 
       //Drop-in Event Handler when user submits Payment
-
-      //todo: check if onSubmit should be different for cards vs. others 
       onSubmit: (state, dropin) => {
         if (state.isValid) {
-          console.log("submitting state: " + JSON.stringify(state))
-
           submissionHandler(state, dropin, "/api/initiatePayment");
         }
       },
 
       //Drop-in Event Handler when payment requires additional details
       onAdditionalDetails: (state, dropin) => {
-        console.log("additionalDetails state: " + JSON.stringify(state.data))
         submissionHandler(state, dropin, "/api/submitAdditionalDetails");
       },
 
       onReady: () => {
         console.log("Drop-in component initialized successfully")
       }
-
     }
 
     const checkout = new AdyenCheckout(configuration);
@@ -170,5 +160,3 @@ async function initializeCheckout() {
 }
 
 initializeCheckout();
-
-// TO DO: add handling if paymentMethods call fails (display sorry error message)
