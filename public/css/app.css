@@ -1,6 +1,13 @@
 
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+
 body {
-  font-family: Arial;
+  font-family: Helvetica;
   font-size: 17px;
   padding: 8px;
 }
@@ -8,6 +15,8 @@ body {
 * {
   box-sizing: border-box;
 }
+
+
 
 .row {
   display: flex;
@@ -82,3 +91,13 @@ span.price {
     margin-bottom: 20px;
   }
 }
+
+
+
+i {
+  color: #9ABC66;
+  font-size: 100px;
+  line-height: 200px;
+  margin-left:-15px;
+}
+

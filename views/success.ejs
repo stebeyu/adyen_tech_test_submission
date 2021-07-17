@@ -1,5 +1,25 @@
+<!DOCTYPE html>
+<html>
 <main>
-    <div class="placeholder">
-      <h1>Payment successful!</h1>
-    </div> 
-  </main>
+  <body>
+    <div>
+      <img src="./images/checkmark.png" style="display: block; margin-left: auto; margin-right: auto;width: 25%;">
+      <h1 style="display:flex;justify-content:center;align-items:center;">Payment successful!</h1>
+      <p id='pspReference' style="display:flex;justify-content:center;align-items:center;"></p>
+      <p id='merchantReference' style="display:flex;justify-content:center;align-items:center;"></p>
+    </div>
+  </body>
+
+  </div>
+</main>
+
+</html>
+
+<script>
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const pspReference = urlParams.get('pspreference');
+  const merchantReference = urlParams.get('merchantreference');
+  document.getElementById('pspReference').textContent = `PSP Reference: ${pspReference}`;
+  document.getElementById('merchantReference').textContent = `Merchant Reference: ${merchantReference}`;
+</script>

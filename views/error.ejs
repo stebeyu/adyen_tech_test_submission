@@ -1,5 +1,25 @@
 <main>
     <div class="placeholder">
-      <h1>There was an error processing your payment</h1>
+      <h1>We have encountered an error. Please try again later.</h1>
+      <p id="resultCode"></p>
+      <p id="refusalReason"></p>
+      <p id="pspReference"></p>
+      <p id="refusalReasonCode"></p>
+      <p id="merchantReference"></p>
     </div> 
   </main>
+
+  <script>
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const resultCode = urlParams.get('resultcode');
+    const refusalReason = urlParams.get('refusalreason');
+    const pspReference = urlParams.get('pspreference');
+    const refusalReasonCode = urlParams.get('refusalreasoncode');
+    const merchantReference = urlParams.get('merchantreference');
+    document.getElementById('resultCode').textContent = `Result code: ${resultCode}`;
+    document.getElementById('refusalReason').textContent = `Refusal reason: ${refusalReason}`;
+    document.getElementById('pspReference').textContent = `PSPReference: ${pspReference}`;
+    document.getElementById('refusalReasonCode').textContent = `Refusal Reason Code: ${refusalReasonCode}`;
+    document.getElementById('merchantReference').textContent = `Merchant Reference: ${merchantReference}`;
+  </script>
