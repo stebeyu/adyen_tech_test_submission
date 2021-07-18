@@ -9,11 +9,11 @@ const demoPayerConfig = {
   shopperIP: '127.0.0.1',
   billingAddress: {
     street: "42 Wallaby Way",
-    postalCode: "94107",
-    houseNumberOrName: "2",
+    postalCode: "2000",
+    houseNumberOrName: "Apartment 2",
     city: "Sydney",
-    stateOrProvince: "Ohio",
-    country: "United States"
+    stateOrProvince: "New South Wales",
+    country: "Australia"
   }
 }
 

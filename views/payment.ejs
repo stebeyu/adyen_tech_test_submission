@@ -1,57 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
 <div id="clientKey" style="display: none"><%= clientKey %></div>
 <div id="paymentMethodsResponse" style="display: none"><%= response%></div>
 
+<link rel="stylesheet" href="/css/main.css">
+
 <script src="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/3.10.1/adyen.js"
-    integrity="sha384-wG2z9zSQo61EIvyXmiFCo+zB3y0ZB4hsrXVcANmpP8HLthjoQJQPBh7tZKJSV8jA"
-    crossorigin="anonymous"></script>
+  integrity="sha384-wG2z9zSQo61EIvyXmiFCo+zB3y0ZB4hsrXVcANmpP8HLthjoQJQPBh7tZKJSV8jA" crossorigin="anonymous"></script>
 
-  <link rel="stylesheet" href="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/3.10.1/adyen.css"
-    integrity="sha384-8ofgICZZ/k5cC5N7xegqFZOA73H9RQ7H13439JfAZW8Gj3qjuKL2isaTD3GMIhDE" crossorigin="anonymous">
+<link rel="stylesheet" href="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/3.10.1/adyen.css"
+  integrity="sha384-8ofgICZZ/k5cC5N7xegqFZOA73H9RQ7H13439JfAZW8Gj3qjuKL2isaTD3GMIhDE" crossorigin="anonymous">
 
-  <link rel="stylesheet" href="../css/app.css" type="text/css">
+
+
+
+<head>
+  <%- include('./partials/head'); %>
+</head>
+
+<header>
+  <%- include('./partials/header'); %>
+</header>
 
 <main>
-    <div class="placeholder">
-      <h1>This are great</h1>
-    </div>
+  <div class="header text-center m-2">
+    <h1>Checkout</h1>
+  </div>
 
-    <div class="row">
-      <div class="col-75">
-        <div class="container">
-            <div class="row">
-              <div class="col-50">
-                <h3>Shipping Address</h3>
-                <label for="fname"><i class="fa fa-user"></i> Full Name</label>
-                <input type="text" id="fname" name="firstname" placeholder="P Sherman" disabled>
-                <label for="email"><i class="fa fa-envelope"></i> Email</label>
-                <input type="text" id="email" name="email" placeholder="psherman@sherman.com" disabled>
-                <label for="adr"><i class="fa fa-address-card-o"></i> Street</label>
-                <input type="text" id="adr" name="address" placeholder="42 Wallaby Way" disabled>
-                <label for="housenumber"><i class="fa fa-address-card-o"></i> House Number</label>
-                <input type="text" id="hous" name="housenumber" placeholder="2" disabled>
-                <label for="city"><i class="fa fa-institution"></i> City</label>
-                <input type="text" id="city" name="city" placeholder="Sydney" disabled>
-    
-                <div class="row">
-                  <div class="col-50">
-                    <label for="state">State</label>
-                    <input type="text" id="state" name="state" placeholder="California" disabled>
-                  </div>
-                  <div class="col-50">
-                    <label for="zip">Zip</label>
-                    <input type="text" id="zip" name="zip" placeholder="94107" disabled>
-                  </div>
-                </div>
-              </div>         
-            </div> 
-          </form>
-        </div>
+  <div class="container">
+    <div class="card m-4 mx-auto d-flex justify-content-center" style="width: 35rem">
+      <div class="card-header">Shipping Information
       </div>
+      <div class="card-body">
+        <fieldset disabled="disabled">
+          <form>
+            <div class="form-group-small row">
+              <label for="inputName" class="col-sm-5 col-form-label">Name</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputName" placeholder="P Sherman">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputAddress" class="col-sm-5 col-form-label">Address</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputAddress"
+                  placeholder="42 Wallaby Way">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputAddress2" class="col-sm-5 col-form-label">Address 2</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputAddress2" placeholder="Apartment 2">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputCity" class="col-sm-5 col-form-label">City</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputCity" placeholder="Sydney">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputState" class="col-sm-5 col-form-label">State/Province</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputState"
+                  placeholder="New South Wales">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputPostal" class="col-sm-5 col-form-label">Postal code 2</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputPostal" placeholder="2000">
+              </div>
+            </div>
+            <div class="form-group-small row">
+              <label for="inputCountry" class="col-sm-5 col-form-label">Country</label>
+              <div class="col-sm-6">
+                <input type="text" class="form-control-plaintext border-0" id="inputCountry" placeholder="Australia">
+              </div>
+            </div>
+        </fieldset>
+      </div>
+
+      </form>
+    </div>
+  </div>
+
+
+  </div>
+  </div>
+
+</main>
+<div class="paymentform">
+  <div id="dropin" padding: 10px></div>
+</div>
+
+
     
-
-    </div>    
-  </main>
-
-<div id="dropin"></div>
-
 <script type="text/javascript" src="../paymentImplementation.js"></script>
+
+<footer>
+
+</footer>
+
+</body>
+
+</html>
