@@ -28,13 +28,13 @@ const envConfig = {
 
 const demoPaymentMethodConfig = {
    merchantAccount: envConfig.merchantAccount,
-   countryCode: "NL",
+   countryCode: "AU",
    amount: {
-      currency: "EUR",
+      currency: "AUD",
       value: 1000
    },
    channel: "Web",
-   shopperLocale: "en-US"
+   shopperLocale: "en-AU"
 }
 
 //----------------//Utilities//----------------//
