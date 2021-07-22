@@ -1,10 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
+<!-- Passing variables from backend to client-side JS---------------------------->
+<!-- For demo only - would need to sanitize these inputs in a production system-->
 <div id="clientKey" style="display: none"><%= clientKey %></div>
-<div id="paymentMethodsResponse" style="display: none"><%= response%></div>
-
-<link rel="stylesheet" href="/css/main.css">
+<div id="paymentMethodsResponse" style="display: none"><%= paymentMethodsResponse%></div>
+<div id="payerInfo" style="display: none"> <%= payerInfo%></div>
+<!------------------------------------------------------------------------------->
 
 <script src="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/3.10.1/adyen.js"
   integrity="sha384-wG2z9zSQo61EIvyXmiFCo+zB3y0ZB4hsrXVcANmpP8HLthjoQJQPBh7tZKJSV8jA" crossorigin="anonymous"></script>
@@ -12,11 +14,9 @@
 <link rel="stylesheet" href="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/3.10.1/adyen.css"
   integrity="sha384-8ofgICZZ/k5cC5N7xegqFZOA73H9RQ7H13439JfAZW8Gj3qjuKL2isaTD3GMIhDE" crossorigin="anonymous">
 
-
-
-
 <head>
   <%- include('./partials/head'); %>
+  <title>Checkout</title>
 </head>
 
 <header>
@@ -38,7 +38,7 @@
             <div class="form-group-small row">
               <label for="inputName" class="col-sm-5 col-form-label">Name</label>
               <div class="col-sm-6">
-                <input type="text" class="form-control-plaintext border-0" id="inputName" placeholder="P Sherman">
+                <input type="text" class="form-control-plaintext border-0" id="inputName" placeholder='P Sherman'>
               </div>
             </div>
             <div class="form-group-small row">
@@ -68,7 +68,7 @@
               </div>
             </div>
             <div class="form-group-small row">
-              <label for="inputPostal" class="col-sm-5 col-form-label">Postal code 2</label>
+              <label for="inputPostal" class="col-sm-5 col-form-label">Postal code</label>
               <div class="col-sm-6">
                 <input type="text" class="form-control-plaintext border-0" id="inputPostal" placeholder="2000">
               </div>
