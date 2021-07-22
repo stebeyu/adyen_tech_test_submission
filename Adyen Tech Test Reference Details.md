@@ -1,5 +1,105 @@
 # Adyen Tech Test Details
 
+## Payment Methods
+### /paymentMethods
+
+**Purpose**: Submit shopper location and transaction amount to display available payment methods. Requested every time checkout loads.
+
+<details><summary>Request</summary>
+<p>
+
+```json
+{
+   "merchantAccount":"AdyenRecruitmentCOM",
+   "countryCode":"AU",
+   "amount":{
+      
+   },
+   "channel":"Web",
+   "shopperLocale":"en-AU"
+}
+```
+</p>
+</details>
+
+<details><summary>Response</summary>
+<p>
+
+```json
+{
+   "paymentMethods":[
+      {
+         "brands":[
+            "visa",
+            "mc",
+            "amex",
+            "diners",
+            "discover",
+            "maestro"
+         ],
+         "details":[
+            {
+               "key":"encryptedCardNumber",
+               "type":"cardToken"
+            },
+            {
+               "key":"encryptedSecurityCode",
+               "type":"cardToken"
+            },
+            {
+               "key":"encryptedExpiryMonth",
+               "type":"cardToken"
+            },
+            {
+               "key":"encryptedExpiryYear",
+               "type":"cardToken"
+            },
+            {
+               "key":"holderName",
+               "optional":true,
+               "type":"text"
+            }
+         ],
+         "name":"Credit Card",
+         "type":"scheme"
+      },
+      {
+         "name":"POLi",
+         "type":"poli"
+      },
+      {
+         "name":"AliPay",
+         "type":"alipay"
+      },
+      {
+         "configuration":{
+            "merchantId":"1000",
+            "gatewayMerchantId":"AdyenRecruitmentCOM"
+         },
+         "details":[
+            {
+               "key":"paywithgoogle.token",
+               "type":"payWithGoogleToken"
+            }
+         ],
+         "name":"Google Pay",
+         "type":"paywithgoogle"
+      },
+      {
+         "name":"WeChat Pay",
+         "type":"wechatpayQR"
+      },
+      {
+         "name":"WeChat Pay",
+         "type":"wechatpayWeb"
+      }
+   ]
+}
+```
+</p>
+</details>
+
+
 ## Card with 3DS2 (Redirect)
 **PSP Reference**: 882626917042228J
 ### /payments

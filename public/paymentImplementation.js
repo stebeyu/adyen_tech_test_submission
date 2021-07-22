@@ -11,7 +11,6 @@ const payerInfo = JSON.parse(document.getElementById("payerInfo").innerHTML);
 //Utility function to call backend server endpoints
 
 async function callServer(url, data) {
-  console.log("call server")
   const res = await fetch(url, {
     method: "POST",
     body: data ? JSON.stringify(data) : "",
@@ -19,7 +18,6 @@ async function callServer(url, data) {
       "Content-Type": "application/json",
     },
   });
-  console.log("Calling server: " + url)
   return await res.json();
 }
 
@@ -28,7 +26,7 @@ async function callServer(url, data) {
 function handleServerResponse(res, dropin) {
 
   if (res.action) {
-    //To do: lookin to the value of dropin
+
     action = res.action;
 
     //Transform 3DS2 action if there is a subtype before passing into Drop-in
@@ -43,11 +41,12 @@ function handleServerResponse(res, dropin) {
         break;
       }
 
-      default: //No action.type transformation needed if not 3DS2 action
+      default: //No action.type transformation needed if not 3DS2 native action
         break
     }
 
     console.log("Action transformed: sending to Dropin to handle: " + JSON.stringify(action) + `\n`);
+    
     //Drop-in component for handles action (redirect or 3DS)
     dropin.handleAction(action);
 
@@ -147,7 +146,8 @@ async function initializeCheckout() {
       },
 
     }
-
+    
+    //Instantiate Drop-in instance and mount to DOM element
     const checkout = new AdyenCheckout(configuration);
     const dropinIntegration = checkout.create("dropin").mount("#dropin");
   }
