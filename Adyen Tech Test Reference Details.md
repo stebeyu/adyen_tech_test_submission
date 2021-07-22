@@ -13,7 +13,7 @@
    "merchantAccount":"AdyenRecruitmentCOM",
    "countryCode":"AU",
    "amount":{
-      
+      "value":100
    },
    "channel":"Web",
    "shopperLocale":"en-AU"
@@ -365,7 +365,7 @@ PSP Reference: 862626917493131A
 </p>
 </details>
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -565,7 +565,7 @@ PSP Reference: 882626918724537F
 
 **Purpose**: submit initial payment request with shopper and transaction info
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
 
 ```json
@@ -614,7 +614,7 @@ PSP Reference: 882626918724537F
 </p>
 </details>
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -637,7 +637,7 @@ PSP Reference: 882626918724537F
 
 **Purpose**: submit additional details following Drop-in 3DS2 authentication
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
 
 ```json
@@ -651,7 +651,7 @@ PSP Reference: 882626918724537F
 </p>
 </details>
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -808,7 +808,7 @@ PSP Reference: 861626917720735F
 
 **Purpose**: submit initial payment request with shopper and transaction info
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
 
 ```json
@@ -835,7 +835,7 @@ PSP Reference: 861626917720735F
 </details>
 
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -856,7 +856,7 @@ PSP Reference: 861626917720735F
 
 **Purpose**: submit additional details following iDEAL authentication and redirect back to checkout
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
 
 ```json
@@ -869,7 +869,7 @@ PSP Reference: 861626917720735F
 </p>
 </details>
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -893,8 +893,9 @@ PSP Reference: 852626926190570H
 
 **Purpose**: submit initial payment request with shopper and transaction info
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
+
 
 ```json
 {
@@ -918,7 +919,7 @@ PSP Reference: 852626926190570H
 </p>
 </details>
 
-<details><summary>Response 1</summary>
+<details><summary>Response</summary>
 <p>
 
 ```json
@@ -939,7 +940,7 @@ PSP Reference: 852626926190570H
 
 **Purpose**: submit additional details following POLi authentication and redirect back to checkout
 
-<details><summary>Request 1</summary>
+<details><summary>Request</summary>
 <p>
 
 ```json
