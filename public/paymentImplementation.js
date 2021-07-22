@@ -1,21 +1,8 @@
-//Storing paymentMethods and clientKey, passed when page is rendered
+/*Storing paymentMethods, clientKey, and payerInfo to be used to
+  instantiate Drop-in Compnent */
 const paymentMethodsResponse = JSON.parse(document.getElementById("paymentMethodsResponse").innerHTML);
 const clientKey = document.getElementById("clientKey").innerHTML;
-
-//Demo shopper info
-const demoPayerConfig = {
-  holderName: "P Sherman",
-  shopperEmail: "psherman@sherman.com",
-  shopperIP: '127.0.0.1',
-  billingAddress: {
-    street: "42 Wallaby Way",
-    postalCode: "2000",
-    houseNumberOrName: "Apartment 2",
-    city: "Sydney",
-    stateOrProvince: "New South Wales",
-    country: "Australia"
-  }
-}
+const payerInfo = JSON.parse(document.getElementById("payerInfo").innerHTML);
 
 
 //----------------//SERVER FUNCTIONS//----------------//
@@ -44,7 +31,7 @@ function handleServerResponse(res, dropin) {
     //To do: lookin to the value of dropin
     action = res.action;
 
-    //Transform 3DS2 action.type before passing into Drop-in
+    //Transform 3DS2 action if there is a subtype before passing into Drop-in
     switch (true) {
       case (action.type === 'threeDS2' && action.subtype === 'fingerprint'): {
         action.type = 'threeDS2Fingerprint'
@@ -60,14 +47,15 @@ function handleServerResponse(res, dropin) {
         break
     }
 
-    //Pass action to Drop-in component for handling (redirect or 3DS)
+    console.log("Action transformed: sending to Dropin to handle: " + JSON.stringify(action) + `\n`);
+    //Drop-in component for handles action (redirect or 3DS)
     dropin.handleAction(action);
 
   }
 
   else {
-    
-    //Send user to results page based on resultCode received
+
+    //If no action, send user to results page based on resultCode received
     switch (res.resultCode) {
       case "Authorised":
         window.location.href = `/success?pspreference=${res.pspReference}&merchantreference=${res.merchantReference}`;
@@ -77,7 +65,7 @@ function handleServerResponse(res, dropin) {
         window.location.href = "/pending";
         break;
       case "Refused":
-        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`; 
+        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`;
         break;
       default:
         window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`;
@@ -93,7 +81,7 @@ async function submissionHandler(state, dropin, url) {
     const res = await callServer(url, state.data);
     handleServerResponse(res, dropin);
   }
-  
+
   catch (error) {
     console.error(error);
   }
@@ -102,6 +90,7 @@ async function submissionHandler(state, dropin, url) {
 //----------------//INITIALIZE DROP-IN//----------------//
 
 async function initializeCheckout() {
+
   try {
     const configuration = {
       paymentMethodsResponse: paymentMethodsResponse,
@@ -115,25 +104,31 @@ async function initializeCheckout() {
           holderNameRequired: true,
           billingAddressRequired: true,
           data: {
-            holderName: demoPayerConfig.holderName,
-            shopperEmail: demoPayerConfig.shopperEmail,
-            shopperIP: demoPayerConfig.shopperIP,
+            holderName: payerInfo.holderName,
+            shopperEmail: payerInfo.shopperEmail,
+            shopperIP: payerInfo.shopperIP,
+            amount: {
+              value: payerInfo.value,
+              currency: payerInfo.currency
+            },
             billingAddress: {
-              street: demoPayerConfig.billingAddress.street,
-              postalCode: demoPayerConfig.billingAddress.postalCode,
-              city: demoPayerConfig.billingAddress.city,
-              houseNumberOrName: demoPayerConfig.billingAddress.houseNumberOrName,
-              country: demoPayerConfig.billingAddress.country,
-              stateOrProvince: demoPayerConfig.billingAddress.stateOrProvince
+              street: payerInfo.billingAddress.street,
+              postalCode: payerInfo.billingAddress.postalCode,
+              city: payerInfo.billingAddress.city,
+              houseNumberOrName: payerInfo.billingAddress.houseNumberOrName,
+              country: payerInfo.billingAddress.country,
+              stateOrProvince: payerInfo.billingAddress.stateOrProvince
             }
           }
         }
       },
-
       //Drop-in Event Handler when user submits Payment
       onSubmit: (state, dropin) => {
         if (state.isValid) {
           submissionHandler(state, dropin, "/api/initiatePayment");
+        }
+        else {
+          console.log("Invalid state on submit");
         }
       },
 
@@ -144,19 +139,22 @@ async function initializeCheckout() {
 
       onReady: () => {
         console.log("Drop-in component initialized successfully")
-      }
+      },
+
+      amount: {
+        value: payerInfo.amount.value,
+        currency: payerInfo.amount.currency
+      },
+
     }
 
     const checkout = new AdyenCheckout(configuration);
-
     const dropinIntegration = checkout.create("dropin").mount("#dropin");
-
   }
 
   catch (error) {
     console.error(error)
   }
-
 }
 
 initializeCheckout();

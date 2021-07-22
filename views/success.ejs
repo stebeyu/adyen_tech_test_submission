@@ -1,13 +1,27 @@
 <!DOCTYPE html>
 <html>
+
+<head>
+  <%- include('./partials/head'); %>
+  <title>Thank you!</title>
+</head>
+
+<header>
+  <%- include('./partials/header'); %>
+</header>
 <main>
+
   <body>
-    <div>
-      <img src="./images/checkmark.png" style="display: block; margin-left: auto; margin-right: auto;width: 25%;">
+    <div class="container" >
+    <div class="card mt-4 d-flex w-55 p-5 shadow-sm mb-5 bg-white rounded">
+      <img class="card-img-top" src="./images/checkmark.png" style="display: block; margin-left: auto; margin-right: auto;width: 25%;">
+      <div class="card-body">
       <h1 style="display:flex;justify-content:center;align-items:center;">Payment successful!</h1>
-      <p id='pspReference' style="display:flex;justify-content:center;align-items:center;"></p>
-      <p id='merchantReference' style="display:flex;justify-content:center;align-items:center;"></p>
+      <p class="card-text" id='pspReference' style="display:flex;justify-content:center;align-items:center;"></p>
+      <p class="card-text" id='merchantReference' style="display:flex;justify-content:center;align-items:center;"></p>
+      </div>
     </div>
+  </div>
   </body>
 
   </div>
