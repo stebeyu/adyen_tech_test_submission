@@ -1,128 +1,160 @@
-console.log("script run")
-
+/*Storing paymentMethods, clientKey, and payerInfo to be used to
+  instantiate Drop-in Compnent */
 const paymentMethodsResponse = JSON.parse(document.getElementById("paymentMethodsResponse").innerHTML);
-const clientKey= document.getElementById("clientKey").innerHTML;
+const clientKey = document.getElementById("clientKey").innerHTML;
+const payerInfo = JSON.parse(document.getElementById("payerInfo").innerHTML);
 
-console.log(paymentMethodsResponse);
-console.log(clientKey);
 
-//SERVER FUNCTIONS//
+//----------------//SERVER FUNCTIONS//----------------//
 
-//used to callServer endpoints
+
+//Utility function to call backend server endpoints
+
 async function callServer(url, data) {
+  const res = await fetch(url, {
+    method: "POST",
+    body: data ? JSON.stringify(data) : "",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return await res.json();
+}
 
-    const res = await fetch(url, {
-        method: "POST",
-        body: data ? JSON.stringify(data) : "",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    return await res.json();
-  }
+//Utility function to handle server responses and send back to Drop-in if needed
 
+function handleServerResponse(res, dropin) {
 
+  if (res.action) {
 
-  function handleServerResponse(res, component) {
-    if (res.action) {
-      component.handleAction(res.action);
-    } else {
-      switch (res.resultCode) {
-        case "Authorised":
-          window.location.href = "/result/success";
-          break;
-        case "Pending":
-        case "Received":
-          window.location.href = "/result/pending";
-          break;
-        case "Refused":
-          window.location.href = "/result/failed";
-          break;
-        default:
-          window.location.href = "/result/error";
-          break;
+    action = res.action;
+
+    //Transform 3DS2 action if there is a subtype before passing into Drop-in
+    switch (true) {
+      case (action.type === 'threeDS2' && action.subtype === 'fingerprint'): {
+        action.type = 'threeDS2Fingerprint'
+        break;
       }
+
+      case (action.type === 'threeDS2' && action.subtype === 'challenge'): {
+        action.type = 'threeDS2Challenge'
+        break;
+      }
+
+      default: //No action.type transformation needed if not 3DS2 native action
+        break
+    }
+
+    console.log("Action transformed: sending to Dropin to handle: " + JSON.stringify(action) + `\n`);
+    
+    //Drop-in component for handles action (redirect or 3DS)
+    dropin.handleAction(action);
+
+  }
+
+  else {
+
+    //If no action, send user to results page based on resultCode received
+    switch (res.resultCode) {
+      case "Authorised":
+        window.location.href = `/success?pspreference=${res.pspReference}&merchantreference=${res.merchantReference}`;
+        break;
+      case "Pending":
+      case "Received":
+        window.location.href = "/pending";
+        break;
+      case "Refused":
+        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`;
+        break;
+      default:
+        window.location.href = `/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`;
+        break;
     }
   }
-   
+}
 
-async function handleSubmission(state, component, url) {
-    try {
-      const res = await callServer(url, state.data);
-      handleServerResponse(res, component);
-    } catch (error) {
-      console.error(error);
-    }
+//Utility function to handle request/response from server endpoints
+async function submissionHandler(state, dropin, url) {
+
+  try {
+    const res = await callServer(url, state.data);
+    handleServerResponse(res, dropin);
   }
-  
-  
-  
 
+  catch (error) {
+    console.error(error);
+  }
+}
 
+//----------------//INITIALIZE DROP-IN//----------------//
 
-  async function initCheckout() {
-    try {
-      //const paymentMethodsResponse = await callServer("/api/getPaymentMethods");
-      const configuration = {
-        paymentMethodsResponse: paymentMethodsResponse,
-        clientKey: clientKey,
-        locale: "en_US",
-        environment: "test",
-        paymentMethodsConfiguration: {
-          card: {
-            showPayButton: true,
-            hasHolderName: true,
-            holderNameRequired: true,
-            name: "Credit or debit card",
+async function initializeCheckout() {
+
+  try {
+    const configuration = {
+      paymentMethodsResponse: paymentMethodsResponse,
+      clientKey: clientKey,
+      locale: "en_US",
+      environment: "test",
+      paymentMethodsConfiguration: {
+        card: {
+          positionHolderNameOnTop: true,
+          hasHolderName: true,
+          holderNameRequired: true,
+          billingAddressRequired: true,
+          data: {
+            holderName: payerInfo.holderName,
+            shopperEmail: payerInfo.shopperEmail,
+            shopperIP: payerInfo.shopperIP,
             amount: {
-              value: 1000,
-              currency: "EUR"
+              value: payerInfo.value,
+              currency: payerInfo.currency
+            },
+            billingAddress: {
+              street: payerInfo.billingAddress.street,
+              postalCode: payerInfo.billingAddress.postalCode,
+              city: payerInfo.billingAddress.city,
+              houseNumberOrName: payerInfo.billingAddress.houseNumberOrName,
+              country: payerInfo.billingAddress.country,
+              stateOrProvince: payerInfo.billingAddress.stateOrProvince
             }
           }
-        },
-        onSubmit: (state, component) => {
-          if (state.isValid) {
-            handleSubmission(state, component, "/api/initiatePayment");
-          }
-        },
-        onAdditionalDetails: (state, component) => {
-          handleSubmission(state, component, "/api/submitAdditionalDetails");
-        },
-      };
-      console.log('checkouts initiated')
-      const checkout = new AdyenCheckout(configuration);
-      
-        checkout.create("dropin").mount("#dropin");
-      
-    } catch (error) {
-      console.error(error);
-    }
-  }
-  
-  
-
-
-
-initCheckout();
-
-
-/*define configuration object
-const configuration = {
-    paymentMethodsResponse,
-    clientKey,
-    locale: "en_US",
-    environment: "test",
-    paymentMethodsConfiguration: {
-        card: {
-            hasHolderName:true
         }
-    },
-    onSubmit: (state,dropin)=> {
-        handleSubmission(state,dropin, "/api/initiatePayment");
-    },
-    onAdditionalDetails: (state,dropin)=> {
-        handleSubmission (state,dropin, "/api/submitAdditionalDetails");
-    }
-}*/
+      },
+      //Drop-in Event Handler when user submits Payment
+      onSubmit: (state, dropin) => {
+        if (state.isValid) {
+          submissionHandler(state, dropin, "/api/initiatePayment");
+        }
+        else {
+          console.log("Invalid state on submit");
+        }
+      },
 
-//pass config object and create new checkoutInstance
+      //Drop-in Event Handler when payment requires additional details
+      onAdditionalDetails: (state, dropin) => {
+        submissionHandler(state, dropin, "/api/submitAdditionalDetails");
+      },
+
+      onReady: () => {
+        console.log("Drop-in component initialized successfully")
+      },
+
+      amount: {
+        value: payerInfo.amount.value,
+        currency: payerInfo.amount.currency
+      },
+
+    }
+    
+    //Instantiate Drop-in instance and mount to DOM element
+    const checkout = new AdyenCheckout(configuration);
+    const dropinIntegration = checkout.create("dropin").mount("#dropin");
+  }
+
+  catch (error) {
+    console.error(error)
+  }
+}
+
+initializeCheckout();

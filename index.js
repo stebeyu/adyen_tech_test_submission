@@ -3,110 +3,284 @@ const express = require('express')
 const ejs = require('ejs')
 const dotenv = require('dotenv')
 const path = require('path')
-dotenv.config();
 const axios = require('axios')
+const { v4: uuidv4 } = require('uuid');
 const { mainModule } = require('process')
+const { json } = require('express')
+const fetch = require('node-fetch')
 
-//init app
+dotenv.config();
+
 const app = express();
-//Set Templating Engine
-app.set('view engine','ejs')
-app.set ('view options', {layout: 'main.ejs'})
-//JSON Parser
+app.set('view engine', 'ejs')
+app.set('view options', { layout: 'main.ejs' })
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, "/public")));
 
-//create config object manually (merchant account, apikey)
-const config = {
-   apiKey:process.env.API_KEY,
-   merchantAccount:process.env.merchantAccount
+//----------------//Environment Config//----------------//
+
+
+const envConfig = {
+   apiKey: process.env.API_KEY,
+   merchantAccount: process.env.merchantAccount,
+   clientKey: process.env.CLIENT_KEY
 }
-//create client object manually by passing in config (client object needs environment)
-const client = {
+
+const demoPaymentMethodConfig = {
+   merchantAccount: envConfig.merchantAccount,
+   countryCode: "AU",
+   amount: {
+      currency: "AUD",
+      value: 100
+   },
+   channel: "Web",
+   shopperLocale: "en-AU"
+}
+
+const payerInfo = {
+   holderName: "P Sherman",
+   shopperEmail: "psherman@sherman.com",
+   shopperIP: '127.0.0.1',
+   billingAddress: {
+     street: "42 Wallaby Way",
+     postalCode: "2000",
+     houseNumberOrName: "Apartment 2",
+     city: "Sydney",
+     stateOrProvince: "New South Wales",
+     country: "Australia"
+   },
+   amount: {
+      value: demoPaymentMethodConfig.amount.value,
+      currency: demoPaymentMethodConfig.amount.currency
+   }
+ }
+
+//----------------//Utilities//----------------//
+
+
+//Temporary data store if additional details are needed
+const tempPaymentData = {};
+
+//Helper function to call Adyen APIs
+async function callExternalApi(url, data, method) {
+   try {
+
+      const axiosConfig = {
+         method: method,
+         url: url,
+         headers: {
+            'x-API-key': envConfig.apiKey,
+            'content-type': 'application-json'
+         },
+         data: data
+      }
+
+      console.log('External API Request to ' + axiosConfig.url + ': ' + JSON.stringify(axiosConfig.data) + `\n`);
+
+      const externalApiResponse = await axios(axiosConfig);
+
+      console.log('External API Response from ' + axiosConfig.url + ': ' + JSON.stringify(externalApiResponse.data) + `\n`);
+
+      return externalApiResponse.data;
+
+   } catch (error) {
+      console.log(`External API Call Error: ` + JSON.stringify(error.response.data))
+      return (error.response.data);
+   }
    
 }
-//create checkout object passing in client object?
-const checkout = {
 
-}
- 
+//----------------//SERVER ENDPOINTS//----------------//
 
-/*//API Endpoints
-app.post("/api/getPaymentMethods", async (req,res) => {
-   try {
-      const response = await ()
-   } catch () {
-      
+
+//Submit payment to Adyen /payments API
+app.post("/api/initiatePayment", async (req, res) => {
+
+   const orderRef = uuidv4();
+
+   const paymentPayload = {
+      paymentMethod: req.body.paymentMethod,
+      browserInfo: req.body.browserInfo,
+      billingAddress: req.body.billingAddress,
+      shopperEmail: req.body.shopperEmail,
+      shopperIP: req.body.shopperIP,
+      merchantAccount: envConfig.merchantAccount,
+      amount: {
+         currency: demoPaymentMethodConfig.amount.currency,
+         value: demoPaymentMethodConfig.amount.value
+      },
+      reference: orderRef,
+      origin: `http://localhost:${process.env.PORT}`,
+      //Redirect URL if payment requires redirect
+      returnUrl: `http://localhost:${process.env.PORT}/api/handleShopperRedirect?orderRef=${orderRef}`,
+      additionalData: {
+         //Flag to indicate that payment should utilize native 3DS2
+         allow3DS2: true
+      },
+      channel: 'web'
    }
-}*/
 
+   const paymentResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments', paymentPayload, 'post')
 
+   const { resultCode } = paymentResult;
+   const { action } = paymentResult;
+   const { pspReference } = paymentResult
 
-const axiosconfig = {
-   method: 'post',
-   url: 'https://checkout-test.adyen.com/v67/paymentMethods',
-   headers: {
-       'x-API-key': 'AQEyhmfxLI3MaBFLw0m/n3Q5qf3VaY9UCJ14XWZE03G/k2NFitRvbe4N1XqH1eHaH2AksaEQwV1bDb7kfNy1WIxIIkxgBw==-y3qzswmlmALhxaVPNjYf74bqPotG12HroatrKA066yE=-W+t7NF;s4}%=kUSD',
-       'content-type': 'application-json'
-   },
-   data: {
-       merchantAccount: 'AdyenRecruitmentCOM',
-       countryCode: 'NL',
-       shopperLocale: "nl-NL",
-       amount: { currency: "EUR", value: 100, },
-       channel: "Web"
+   if (paymentResult.status) {
+      const status = paymentResult.status;
+      const message = paymentResult.message;
+      const psp = paymentResult.pspReference;
+      res.redirect(`/service_error?pspReference=${psp}&message=${message}&status=${status}`);
+      return;
    }
-}
+
+   //If Action code is non-null, cache PaymentData reference value
+   //Then send result code and action back to client
+
+   if (action) {
+      console.log("Action required - caching PaymentData and sending action to Dropin: " + JSON.stringify(paymentResult) + `\n`);
+      tempPaymentData[orderRef] = action.paymentData
+   }
+   res.json(paymentResult);
+
+});
+
+/*Handle redirects when Drop-in client sends user to returnURL after 
+  user completes additional actions (e.g. redirect, 3DS)       */
+app.all("/api/handleShopperRedirect", async (req, res) => {
+
+   const orderRef = req.query.orderRef;
+   
+   //If GET, extract redirect from URL ; if POST, extract from body
+   const redirect = req.method === "GET" ? req.query : req.body;
+   const details = {};
+   console.log("Received redirect from Drop-in: " + JSON.stringify(redirect) + `\n`)
+
+   //Create details object for submission to /payments/details
+   if (redirect.redirectResult) {
+      details.redirectResult = redirect.redirectResult;
+   }
+
+   //Create payload for /payments/details
+   const detailsPayload = {
+      details,
+      //paymentData: tempPaymentData[orderRef]
+   };
+
+   const redirectDetailsResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments/details', detailsPayload, 'post')
+
+   //Redirect to service_error page if Adyen API returns an error
+   if (redirectDetailsResult.errorCode) {
+      const status = redirectDetailsResult.status;
+      const message = redirectDetailsResult.message;
+      const psp = redirectDetailsResult.pspReference;
+      res.redirect(`/service_error?pspReference=${psp}&message=${message}&status=${status}`);
+      return;
+   }
+
+   //Send user to results page based on resultCode received
+   switch (redirectDetailsResult.resultCode) {
+      case "Authorised":
+         res.redirect(`/success?pspreference=${redirectDetailsResult.pspReference}&merchantreference=${redirectDetailsResult.merchantReference}`);
+         break;
+      case "Pending":
+      case "Received":
+         res.redirect("/pending");
+         break;
+      case "Refused":
+         res.redirect("/failed");
+         break;
+      default:
+         res.redirect(`/error?resultcode=${res.resultCode}&refusalreason=${res.refusalReason}&pspreference=${res.pspReference}&refusalreasoncode=${res.refusalReasonCode}&merchantreference=${res.merchantReference}`);
+         break;
+   }
+
+});
+
+//Submit additional details to Adyen API when required
+app.post('/api/submitAdditionalDetails', async (req, res) => {
+
+   const additionalDetailsPayload = {
+      details: req.body.details,
+      paymentData: req.body.paymentData
+   }
+
+   const additionalDetailsResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments/details', additionalDetailsPayload, 'post')
+
+   if (additionalDetailsResult.errorCode) {
+      const status = additionalDetailsResult.status;
+      const message = additionalDetailsResult.message;
+      const psp = additionalDetailsResult.pspReference;
+      res.redirect(`/service_error?pspReference=${psp}&message=${message}&status=${status}`);
+      return;
+   }
+
+   res.json(additionalDetailsResult);
+
+});
 
 
-//Client Endpoints
- app.get('/checkout',(req,res)=>{
-    res.sendFile(path.resolve('pages/checkout.html'))
- })
 
- app.get('/', async (req,res)=>{
-    try {
-       let response = await axios(axiosconfig)
-               /*let response = [
-                  { details: [Array], name: 'iDEAL', type: 'ideal' 
-                     },
-                  {
-                  brands: [Array],
-                  details: [Array],
-                  name: 'Credit Card',
-                  type: 'scheme'
-                  },
-                  {
-                  details: [Array],
-                  name: 'SEPA Direct Debit',
-                  type: 'sepadirectdebit'
-                  },
-                  { name: 'AliPay', type: 'alipay' },
-                  {
-                  configuration: [Object],
-                  details: [Array],
-                  name: 'Google Pay',
-                  type: 'paywithgoogle'
-                  },
-                  { name: 'WeChat Pay', type: 'wechatpayQR' },
-                  { name: 'WeChat Pay', type: 'wechatpayWeb' }
-               ]*/
-       //console.log (response)
-       res.render("payment", {
-          clientKey: process.env.CLIENT_KEY,
-          response: JSON.stringify(response.data)
-          //response: response
-       });
-    }
-    catch (error){
-      console.error(error.response);
-    }
- })
- 
+//----------------//CLIENT ENDPOINTS//----------------//
 
- //Start Server
+
+//Home page for this demo
+app.get('/checkout', async (req, res) => {
+
+   const paymentMethodsPayload = {
+      merchantAccount: demoPaymentMethodConfig.merchantAccount,
+      countryCode: demoPaymentMethodConfig.countryCode,
+      amount: {
+         value: demoPaymentMethodConfig.amount.value
+      },
+      channel: demoPaymentMethodConfig.channel,
+      shopperLocale: demoPaymentMethodConfig.shopperLocale
+   }
+
+   const paymentMethodsResult = await callExternalApi('https://checkout-test.adyen.com/v67/paymentMethods', paymentMethodsPayload, 'post')
+
+   if (paymentMethodsResult.errorCode){
+      const status = paymentMethodsResult.status;
+      const message = paymentMethodsResult.message;
+      const psp = paymentMethodsResult.pspReference;
+      res.redirect(`/service_error?pspreference=${psp}&message=${message}&status=${status}`)
+      return;
+   }
+   
+   res.render("payment", {
+      clientKey: envConfig.clientKey,
+      paymentMethodsResponse: JSON.stringify(paymentMethodsResult),
+      payerInfo: JSON.stringify(payerInfo)
+   });
+})
+
+app.get('/success', async (req, res) => {
+   res.render("success")
+})
+
+app.get('/pending', async (req, res) => {
+   res.render("pending");
+})
+
+app.get('/failed', async (req, res) => {
+   res.render("failed");
+})
+
+app.get('/error', async (req, res) => {
+   res.render("error");
+})
+
+app.get('/service_error', async (req, res) => {
+   res.render("service_error");
+})
+
+app.get('/', function (req, res) {
+   res.redirect('/checkout');
+});
+
+//Start Server
 const PORT = process.env.PORT || 3000
+
 app.listen(process.env.PORT, () => {
    console.log(`Server started on port ${PORT}`)
 })
