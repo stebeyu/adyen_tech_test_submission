@@ -17,8 +17,6 @@ app.set('view options', { layout: 'main.ejs' })
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "/public")));
 
-
-
 //----------------//Environment Config//----------------//
 
 
@@ -39,9 +37,6 @@ const demoPaymentMethodConfig = {
    shopperLocale: "en-AU"
 }
 
-//Demo shopper info
-
-//to do - pass payerInfo into payment.ejs vars
 const payerInfo = {
    holderName: "P Sherman",
    shopperEmail: "psherman@sherman.com",
@@ -80,9 +75,11 @@ async function callExternalApi(url, data, method) {
          data: data
       }
 
+      console.log('External API Request to ' + axiosConfig.url + ': ' + JSON.stringify(axiosConfig.data) + `\n`);
+
       const externalApiResponse = await axios(axiosConfig);
 
-      //console.log('External API Response: ' + JSON.stringify(externalApiResponse.data));
+      console.log('External API Response from ' + axiosConfig.url + ': ' + JSON.stringify(externalApiResponse.data) + `\n`);
 
       return externalApiResponse.data;
 
@@ -92,7 +89,6 @@ async function callExternalApi(url, data, method) {
    }
    
 }
-
 
 //----------------//SERVER ENDPOINTS//----------------//
 
@@ -124,12 +120,7 @@ app.post("/api/initiatePayment", async (req, res) => {
       channel: 'web'
    }
 
-   console.log(`Submitting payment to /payments for order reference number : ${orderRef}` + `\n`);
-   console.log('Request: ' + JSON.stringify(paymentPayload) + '\n')
-
    const paymentResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments', paymentPayload, 'post')
-
-   console.log("Initial payment response from /payments: " + JSON.stringify(paymentResult))
 
    const { resultCode } = paymentResult;
    const { action } = paymentResult;
@@ -154,17 +145,16 @@ app.post("/api/initiatePayment", async (req, res) => {
 
 });
 
-
 /*Handle redirects when Drop-in client sends user to returnURL after 
   user completes additional actions (e.g. redirect, 3DS)       */
 app.all("/api/handleShopperRedirect", async (req, res) => {
 
    const orderRef = req.query.orderRef;
-   console.log ("Redirect request method: " + req.method + ", request body: " + JSON.stringify(req.body) + ", request query" + JSON.stringify(req.query)); 
+   
    //If GET, extract redirect from URL ; if POST, extract from body
    const redirect = req.method === "GET" ? req.query : req.body;
    const details = {};
-   console.log("Received redirect: " + JSON.stringify(redirect))
+   console.log("Received redirect from Drop-in: " + JSON.stringify(redirect) + `\n`)
 
    //Create details object for submission to /payments/details
    if (redirect.redirectResult) {
@@ -174,14 +164,10 @@ app.all("/api/handleShopperRedirect", async (req, res) => {
    //Create payload for /payments/details
    const detailsPayload = {
       details,
-      paymentData: tempPaymentData[orderRef]
+      //paymentData: tempPaymentData[orderRef]
    };
 
-   console.log('Submitting additional details to /payments/details: '+ JSON.stringify(detailsPayload) + `\n`);
-
    const redirectDetailsResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments/details', detailsPayload, 'post')
-
-   console.log("Response from /payments/details:  " + JSON.stringify(redirectDetailsResult) + `\n`)
 
    //Redirect to service_error page if Adyen API returns an error
    if (redirectDetailsResult.errorCode) {
@@ -214,16 +200,12 @@ app.all("/api/handleShopperRedirect", async (req, res) => {
 //Submit additional details to Adyen API when required
 app.post('/api/submitAdditionalDetails', async (req, res) => {
 
-   console.log("Submitting additional details to /payments/details: " + JSON.stringify(req.body) + `\n`);
-
    const additionalDetailsPayload = {
       details: req.body.details,
       paymentData: req.body.paymentData
    }
 
    const additionalDetailsResult = await callExternalApi('https://checkout-test.adyen.com/v67/payments/details', additionalDetailsPayload, 'post')
-
-   console.log("Response from /payments/details:  " + JSON.stringify(additionalDetailsResult) + `\n`)
 
    if (additionalDetailsResult.errorCode) {
       const status = additionalDetailsResult.status;
@@ -249,14 +231,11 @@ app.get('/checkout', async (req, res) => {
       merchantAccount: demoPaymentMethodConfig.merchantAccount,
       countryCode: demoPaymentMethodConfig.countryCode,
       amount: {
-         currency: demoPaymentMethodConfig.currency,
-         value: demoPaymentMethodConfig.value
+         value: demoPaymentMethodConfig.amount.value
       },
       channel: demoPaymentMethodConfig.channel,
       shopperLocale: demoPaymentMethodConfig.shopperLocale
    }
-
-   console.log('Getting payment methods from /paymentmethods');
 
    const paymentMethodsResult = await callExternalApi('https://checkout-test.adyen.com/v67/paymentMethods', paymentMethodsPayload, 'post')
 
